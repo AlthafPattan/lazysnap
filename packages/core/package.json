@@ -1,0 +1,35 @@
+{
+  "name": "@lazysnap/core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic lazy image loading engine with observability, retry-on-failure, LQIP, and SSR support",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "build:watch": "tsc --project tsconfig.json --watch",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "keywords": [
+    "lazy-loading", "images", "intersection-observer",
+    "lqip", "blur-up", "observability", "analytics",
+    "performance", "ssr", "retry"
+  ],
+  "author": "Althaf Khan Pattan",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.4",
+    "typescript": "^5.4.5"
+  }
+}

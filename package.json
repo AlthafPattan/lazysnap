@@ -1,0 +1,25 @@
+{
+  "name": "lazysnap-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Monorepo for @lazysnap/* — image loading with observability, retry, and blur-up",
+  "scripts": {
+    "build": "npm run build --prefix packages/core && npm run build --prefix packages/react && npm run build --prefix packages/angular",
+    "build:core": "npm run build --prefix packages/core",
+    "build:react": "npm run build --prefix packages/react",
+    "build:angular": "npm run build --prefix packages/angular",
+    "install:all": "npm install --prefix packages/core && npm install --prefix packages/react && npm install --prefix packages/angular",
+    "clean": "npm run clean --prefix packages/core && npm run clean --prefix packages/react && npm run clean --prefix packages/angular",
+    "typecheck": "npm run typecheck --prefix packages/core && npm run typecheck --prefix packages/react && npm run typecheck --prefix packages/angular",
+    "test": "npm run test --prefix packages/core"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "react-dom": "^18.3.1"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "paths": {
+      "@lazysnap/core": ["../core/src"]
+    }
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../core" }
+  ]
+}

@@ -1,0 +1,100 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write   # for npm provenance
+
+jobs:
+  publish:
+    name: Publish packages
+    runs-on: ubuntu-latest
+    environment: npm-publish
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Verify dist
+        run: |
+          test -f packages/core/dist/index.js
+          test -f packages/react/dist/index.js
+          test -f packages/angular/dist/index.js
+
+      # ── Extract version from release tag (e.g. v0.2.1 → 0.2.1) ──────────
+      - name: Set version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      # ── Bump versions in all package.json files ───────────────────────────
+      - name: Bump package versions
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          node -e "
+            const fs = require('fs');
+            const pkgs = [
+              'packages/core/package.json',
+              'packages/react/package.json',
+              'packages/angular/package.json',
+            ];
+            for (const p of pkgs) {
+              const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+              pkg.version = '$VERSION';
+              // Also update cross-package dependency version
+              if (pkg.dependencies?.['@lazysnap/core']) {
+                pkg.dependencies['@lazysnap/core'] = '$VERSION';
+              }
+              fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+              console.log('Bumped', pkg.name, 'to', '$VERSION');
+            }
+          "
+
+      # ── Publish in dependency order ───────────────────────────────────────
+      - name: Publish @lazysnap/core
+        run: pnpm --filter @lazysnap/core publish --no-git-checks --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @lazysnap/react
+        run: pnpm --filter @lazysnap/react publish --no-git-checks --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @lazysnap/angular
+        run: pnpm --filter @lazysnap/angular publish --no-git-checks --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Published @lazysnap v${{ steps.version.outputs.version }} 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Version |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| @lazysnap/core | ${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| @lazysnap/react | ${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| @lazysnap/angular | ${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,50 @@
+{
+  "name": "@lazysnap/react",
+  "version": "0.1.0",
+  "description": "React wrapper for @lazysnap/core — lazy image loading with observability, blur-up, and LQIP",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "build:watch": "tsc --project tsconfig.json --watch",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "keywords": [
+    "react",
+    "lazy-loading",
+    "images",
+    "lqip",
+    "blur-up",
+    "observability",
+    "next.js",
+    "performance"
+  ],
+  "author": "Althaf Khan Pattan",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
+  "dependencies": {
+    "@lazysnap/core": "file:../core"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.1",
+    "typescript": "^5.4.5"
+  }
+}

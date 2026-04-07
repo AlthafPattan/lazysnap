@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@lazysnap — Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #1a1a1f;
+      --surface-2: #25252d;
+      --border: rgba(255,255,255,0.08);
+      --accent: #6c63ff;
+      --accent-2: #a78bfa;
+      --text: #e8e8f0;
+      --text-muted: #888899;
+      --loaded: #22c55e;
+      --error: #ef4444;
+      --loading: #f59e0b;
+      --radius: 12px;
+      --font: "Inter", system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────── */
+    .hero {
+      padding: 80px 24px 60px;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(108,99,255,0.2), transparent);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero__badge {
+      display: inline-block;
+      background: rgba(108,99,255,0.15);
+      border: 1px solid rgba(108,99,255,0.4);
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 100px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 520px;
+      margin: 0 auto 32px;
+    }
+
+    .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+    section:last-child { border-bottom: none; }
+
+    .section-header { margin-bottom: 40px; }
+    .section-header h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .section-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+    /* ── Controls ─────────────────────────────────────────────── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .btn--primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn--primary:hover { background: #7c74ff; }
+    .btn--ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn--ghost:hover { background: var(--surface-2); }
+
+    /* ── Stats bar ────────────────────────────────────────────── */
+    .stats {
+      display: flex;
+      gap: 24px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .stat { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .stat__dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .stat__dot--idle    { background: var(--text-muted); }
+    .stat__dot--loading { background: var(--loading); animation: pulse 1s infinite; }
+    .stat__dot--loaded  { background: var(--loaded); }
+    .stat__dot--error   { background: var(--error); }
+    .stat__label { color: var(--text-muted); }
+    .stat__count { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Image grid ───────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .card:hover { border-color: rgba(108,99,255,0.4); transform: translateY(-2px); }
+
+    .card__image-wrap {
+      position: relative;
+      aspect-ratio: 4/3;
+      overflow: hidden;
+      background: var(--surface-2);
+    }
+
+    .card__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: filter 0.4s ease;
+    }
+
+    .card__state-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 100px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: all 0.3s;
+    }
+    .state--idle    { background: rgba(136,136,153,0.8); color: #fff; }
+    .state--loading { background: rgba(245,158,11,0.9); color: #fff; }
+    .state--loaded  { background: rgba(34,197,94,0.9); color: #fff; }
+    .state--error   { background: rgba(239,68,68,0.9); color: #fff; }
+
+    .card__body { padding: 14px 16px; }
+    .card__title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .card__meta { font-size: 12px; color: var(--text-muted); font-family: monospace; }
+
+    /* ── Log ──────────────────────────────────────────────────── */
+    .log {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 32px;
+    }
+    .log__entry { padding: 3px 0; display: flex; gap: 12px; }
+    .log__time { color: var(--text-muted); flex-shrink: 0; }
+    .log__msg--load { color: var(--loaded); }
+    .log__msg--error { color: var(--error); }
+    .log__msg--visible { color: var(--accent-2); }
+
+    /* ── Code block ───────────────────────────────────────────── */
+    .code-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .code-section { grid-template-columns: 1fr; } }
+
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .code-block__header {
+      padding: 10px 16px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .code-block__dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .code-block pre {
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: #c9d1d9;
+      margin: 0;
+    }
+    .kw { color: #ff7b72; }
+    .fn { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm { color: #8b949e; font-style: italic; }
+    .prop { color: #79c0ff; }
+  </style>
+</head>
+<body>
+
+<!-- ── Hero ───────────────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero__badge">npm package demo</div>
+  <h1>@lazysnap</h1>
+  <p>Framework-agnostic lazy image loading with IntersectionObserver, blur-up transitions, LQIP, srcset, and SSR support.</p>
+  <div class="badges">
+    <span class="badge">@lazysnap/core</span>
+    <span class="badge">@lazysnap/react</span>
+    <span class="badge">@lazysnap/angular</span>
+    <span class="badge">zero deps</span>
+    <span class="badge">TypeScript</span>
+    <span class="badge">ESM</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── Live Demo ─────────────────────────────────────────────────── -->
+  <section>
+    <div class="section-header">
+      <h2>Live Demo</h2>
+      <p>Images below are lazy-loaded via IntersectionObserver. Scroll down to trigger loading. Watch the state badges update in real time.</p>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn--primary" onclick="resetAll()">↺ Reset All Images</button>
+      <button class="btn btn--ghost" onclick="triggerAll()">⚡ Load All Now</button>
+      <button class="btn btn--ghost" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat__dot stat__dot--idle"></div>
+        <span class="stat__label">Idle</span>
+        <span class="stat__count" id="count-idle">0</span>
+      </div>
+      <div class="stat">
+        <div class="stat__dot stat__dot--loading"></div>
+        <span class="stat__label">Loading</span>
+        <span class="stat__count" id="count-loading">0</span>
+      </div>
+      <div class="stat">
+        <div class="stat__dot stat__dot--loaded"></div>
+        <span class="stat__label">Loaded</span>
+        <span class="stat__count" id="count-loaded">0</span>
+      </div>
+      <div class="stat">
+        <div class="stat__dot stat__dot--error"></div>
+        <span class="stat__label">Error</span>
+        <span class="stat__count" id="count-error">0</span>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="log" id="log">
+      <div class="log__entry">
+        <span class="log__time">--:--:--</span>
+        <span class="log__msg--visible">@lazysnap demo ready. Scroll to load images.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Usage ──────────────────────────────────────────────────────── -->
+  <section>
+    <div class="section-header">
+      <h2>Usage Examples</h2>
+      <p>Three lines to install. One function call to use.</p>
+    </div>
+
+    <div class="code-section">
+      <div class="code-block">
+        <div class="code-block__header">
+          <div class="code-block__dot" style="background:#6c63ff"></div>
+          Vanilla JS / @lazysnap/core
+        </div>
+        <pre><code><span class="kw">import</span> { <span class="fn">observe</span>, <span class="fn">configure</span> } <span class="kw">from</span> <span class="str">"@lazysnap/core"</span>;
+
+<span class="cm">// Set global defaults once</span>
+<span class="fn">configure</span>({ <span class="prop">rootMargin</span>: <span class="str">"0px 0px 300px 0px"</span> });
+
+<span class="kw">const</span> img = document.<span class="fn">querySelector</span>(<span class="str">"img"</span>);
+
+<span class="kw">const</span> cleanup = <span class="fn">observe</span>(img, {
+  <span class="prop">src</span>: <span class="str">"/photos/hero.jpg"</span>,
+  <span class="prop">placeholder</span>: <span class="str">"/photos/hero-lqip.jpg"</span>,
+  <span class="prop">srcset</span>: <span class="str">"hero-480.jpg 480w, hero-1200.jpg 1200w"</span>,
+  <span class="prop">onLoad</span>: () => console.<span class="fn">log</span>(<span class="str">"loaded!"</span>),
+});
+
+<span class="cm">// On cleanup / route change:</span>
+<span class="fn">cleanup</span>();</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block__header">
+          <div class="code-block__dot" style="background:#61dafb"></div>
+          React / @lazysnap/react
+        </div>
+        <pre><code><span class="kw">import</span> { <span class="fn">LazyImage</span> } <span class="kw">from</span> <span class="str">"@lazysnap/react"</span>;
+
+<span class="kw">function</span> <span class="fn">ProductCard</span>() {
+  <span class="kw">return</span> (
+    &lt;<span class="fn">LazyImage</span>
+      <span class="prop">src</span>=<span class="str">"/images/product.jpg"</span>
+      <span class="prop">placeholder</span>=<span class="str">"/images/product-lqip.jpg"</span>
+      <span class="prop">srcset</span>=<span class="str">"product-480.jpg 480w, product-1200.jpg 1200w"</span>
+      <span class="prop">sizes</span>=<span class="str">"(max-width: 600px) 100vw, 400px"</span>
+      <span class="prop">alt</span>=<span class="str">"Product"</span>
+      <span class="prop">loadedClassName</span>=<span class="str">"is-loaded"</span>
+      <span class="prop">width</span>={800}
+      <span class="prop">height</span>={600}
+    /&gt;
+  );
+}</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block__header">
+          <div class="code-block__dot" style="background:#dd0031"></div>
+          Angular / @lazysnap/angular
+        </div>
+        <pre><code><span class="cm">// component.ts</span>
+<span class="kw">import</span> { <span class="fn">LazysnapDirective</span> } <span class="kw">from</span> <span class="str">"@lazysnap/angular"</span>;
+
+<span class="prop">@Component</span>({
+  <span class="prop">standalone</span>: <span class="kw">true</span>,
+  <span class="prop">imports</span>: [<span class="fn">LazysnapDirective</span>],
+  <span class="prop">template</span>: <span class="str">`
+    &lt;img
+      lazysnap
+      [lazysnapSrc]="imageUrl"
+      [lazysnapPlaceholder]="lqipUrl"
+      [lazysnapSrcset]="srcset"
+      (lazysnapLoaded)="onLoaded($event)"
+      alt="Product image"
+    /&gt;
+  `</span>
+})
+<span class="kw">export class</span> <span class="fn">ProductCardComponent</span> {}</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block__header">
+          <div class="code-block__dot" style="background:#a78bfa"></div>
+          React hook / useLazyImage
+        </div>
+        <pre><code><span class="kw">import</span> { <span class="fn">useLazyImage</span> } <span class="kw">from</span> <span class="str">"@lazysnap/react"</span>;
+
+<span class="kw">function</span> <span class="fn">HeroImage</span>() {
+  <span class="kw">const</span> { ref, isLoaded, state } = <span class="fn">useLazyImage</span>({
+    <span class="prop">src</span>: <span class="str">"/hero.jpg"</span>,
+    <span class="prop">placeholder</span>: <span class="str">"/hero-lqip.jpg"</span>,
+    <span class="prop">transitionDuration</span>: 600,
+    <span class="prop">onVisible</span>: () =>
+      analytics.<span class="fn">track</span>(<span class="str">"hero_visible"</span>),
+  });
+
+  <span class="kw">return</span> (
+    &lt;<span class="fn">img</span>
+      <span class="prop">ref</span>={ref}
+      <span class="prop">alt</span>=<span class="str">"Hero"</span>
+      <span class="prop">className</span>={isLoaded ? <span class="str">"loaded"</span> : <span class="str">""</span>}
+    /&gt;
+  );
+}</code></pre>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ── Core Implementation (inline for demo) ──────────────────────── -->
+<script type="module">
+// ── Inline @lazysnap/core for demo purposes ──────────────────────────────────
+
+function isBrowser() {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+function hasIntersectionObserver() {
+  return isBrowser() && "IntersectionObserver" in window;
+}
+
+const GLOBAL_DEFAULTS = {
+  rootMargin: "0px 0px 200px 0px",
+  threshold: 0,
+  transitionDuration: 400,
+  placeholderColor: "#1a1a1f",
+  retries: 2,
+  retryDelay: 1000,
+};
+
+let _overrides = {};
+
+function configure(opts) {
+  _overrides = { ..._overrides, ...opts };
+}
+
+function resolveOptions(options) {
+  const merged = { ...GLOBAL_DEFAULTS, ..._overrides };
+  return {
+    src: options.src,
+    srcset: options.srcset ?? "",
+    sizes: options.sizes ?? "",
+    placeholder: options.placeholder ?? "",
+    placeholderColor: options.placeholderColor ?? merged.placeholderColor,
+    transitionDuration: options.transitionDuration ?? merged.transitionDuration,
+    rootMargin: options.rootMargin ?? merged.rootMargin,
+    threshold: options.threshold ?? merged.threshold,
+    retries: options.retries ?? merged.retries,
+    retryDelay: options.retryDelay ?? merged.retryDelay,
+    onLoad: options.onLoad ?? (() => {}),
+    onError: options.onError ?? (() => {}),
+    onVisible: options.onVisible ?? (() => {}),
+  };
+}
+
+const pool = new Map();
+
+function poolKey(rootMargin, threshold) {
+  return `${rootMargin}|${JSON.stringify(threshold)}`;
+}
+
+function observeElement(element, rootMargin, threshold, callback) {
+  const key = poolKey(rootMargin, threshold);
+  let entry = pool.get(key);
+  if (!entry) {
+    const callbacks = new Map();
+    const observer = new IntersectionObserver(
+      (entries) => { for (const e of entries) { const cb = callbacks.get(e.target); if (cb) cb(e); } },
+      { rootMargin, threshold }
+    );
+    entry = { observer, callbacks };
+    pool.set(key, entry);
+  }
+  entry.callbacks.set(element, callback);
+  entry.observer.observe(element);
+  return () => {
+    entry.observer.unobserve(element);
+    entry.callbacks.delete(element);
+    if (entry.callbacks.size === 0) {
+      entry.observer.disconnect();
+      pool.delete(key);
+    }
+  };
+}
+
+function applyPlaceholder(el, opts) {
+  el.style.backgroundColor = opts.placeholderColor;
+  if (opts.transitionDuration > 0) {
+    el.style.transition = `filter ${opts.transitionDuration}ms ease`;
+    el.style.filter = opts.placeholder ? "blur(12px)" : "none";
+  }
+  if (opts.placeholder) el.src = opts.placeholder;
+}
+
+function loadImage(entry) {
+  const { element: el, options: opts } = entry;
+  entry.state = "loading";
+  entry.attempts += 1;
+  const img = new Image();
+  if (opts.srcset) img.srcset = opts.srcset;
+  if (opts.sizes) img.sizes = opts.sizes;
+  img.onload = () => {
+    if (opts.srcset) el.srcset = opts.srcset;
+    if (opts.sizes) el.sizes = opts.sizes;
+    el.src = opts.src;
+    requestAnimationFrame(() => {
+      el.style.filter = "none";
+    });
+    entry.state = "loaded";
+    opts.onLoad(entry);
+  };
+  img.onerror = () => {
+    if (entry.attempts <= opts.retries) {
+      setTimeout(() => loadImage(entry), opts.retryDelay);
+    } else {
+      entry.state = "error";
+      opts.onError(entry, new Error(`Failed to load: ${opts.src}`));
+    }
+  };
+  img.src = opts.src;
+}
+
+function observe(element, options) {
+  const opts = resolveOptions(options);
+  const entry = { element, options: opts, state: "idle", attempts: 0 };
+  if (!isBrowser()) return () => {};
+  applyPlaceholder(element, opts);
+  if (!hasIntersectionObserver()) {
+    opts.onVisible(entry);
+    loadImage(entry);
+    return () => {};
+  }
+  const unobserve = observeElement(element, opts.rootMargin, opts.threshold, (ie) => {
+    if (!ie.isIntersecting) return;
+    unobserve();
+    opts.onVisible(entry);
+    loadImage(entry);
+  });
+  return unobserve;
+}
+
+// ── Demo setup ───────────────────────────────────────────────────────────────
+
+// Use Picsum for demo images with consistent seeded IDs
+const images = [
+  { id: 10,  title: "Mountains",      category: "Nature"      },
+  { id: 20,  title: "City Lights",    category: "Urban"       },
+  { id: 30,  title: "Ocean Waves",    category: "Nature"      },
+  { id: 40,  title: "Architecture",   category: "Urban"       },
+  { id: 50,  title: "Forest Path",    category: "Nature"      },
+  { id: 60,  title: "Desert Dunes",   category: "Landscape"   },
+  { id: 70,  title: "Night Sky",      category: "Astronomy"   },
+  { id: 80,  title: "Waterfall",      category: "Nature"      },
+  { id: 90,  title: "Street Scene",   category: "Urban"       },
+  { id: 100, title: "Autumn Leaves",  category: "Nature"      },
+  { id: 110, title: "Harbor View",    category: "Coastal"     },
+  { id: 120, title: "Canyon Walls",   category: "Landscape"   },
+];
+
+const cleanups = [];
+const stateCounts = { idle: 0, loading: 0, loaded: 0, error: 0 };
+
+function updateStats() {
+  document.getElementById("count-idle").textContent = stateCounts.idle;
+  document.getElementById("count-loading").textContent = stateCounts.loading;
+  document.getElementById("count-loaded").textContent = stateCounts.loaded;
+  document.getElementById("count-error").textContent = stateCounts.error;
+}
+
+function addLog(type, msg) {
+  const log = document.getElementById("log");
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+  const entry = document.createElement("div");
+  entry.className = "log__entry";
+  entry.innerHTML = `<span class="log__time">${time}</span><span class="log__msg--${type}">${msg}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function buildGrid() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  cleanups.forEach(fn => fn());
+  cleanups.length = 0;
+
+  stateCounts.idle = images.length;
+  stateCounts.loading = 0;
+  stateCounts.loaded = 0;
+  stateCounts.error = 0;
+  updateStats();
+
+  images.forEach(({ id, title, category }) => {
+    const src = `https://picsum.photos/seed/${id}/600/450`;
+    // Simulate LQIP with a tiny version
+    const lqip = `https://picsum.photos/seed/${id}/20/15`;
+
+    const card = document.createElement("div");
+    card.className = "card";
+
+    card.innerHTML = `
+      <div class="card__image-wrap">
+        <img class="card__img" alt="${title}" width="600" height="450" />
+        <div class="card__state-badge state--idle">idle</div>
+      </div>
+      <div class="card__body">
+        <div class="card__title">${title}</div>
+        <div class="card__meta">${category} · picsum seed ${id}</div>
+      </div>
+    `;
+
+    grid.appendChild(card);
+
+    const img = card.querySelector(".card__img");
+    const badge = card.querySelector(".card__state-badge");
+
+    function setBadge(state) {
+      badge.textContent = state;
+      badge.className = `card__state-badge state--${state}`;
+    }
+
+    const cleanup = observe(img, {
+      src,
+      placeholder: lqip,
+      transitionDuration: 450,
+      rootMargin: "0px 0px 100px 0px",
+      onVisible: () => {
+        setBadge("loading");
+        stateCounts.idle = Math.max(0, stateCounts.idle - 1);
+        stateCounts.loading++;
+        updateStats();
+        addLog("visible", `↓ Loading: ${title}`);
+      },
+      onLoad: () => {
+        setBadge("loaded");
+        stateCounts.loading = Math.max(0, stateCounts.loading - 1);
+        stateCounts.loaded++;
+        updateStats();
+        addLog("load", `✓ Loaded: ${title}`);
+      },
+      onError: (_, err) => {
+        setBadge("error");
+        stateCounts.loading = Math.max(0, stateCounts.loading - 1);
+        stateCounts.error++;
+        updateStats();
+        addLog("error", `✗ Error: ${title} — ${err.message}`);
+      },
+    });
+
+    cleanups.push(cleanup);
+  });
+}
+
+window.resetAll = function() {
+  addLog("visible", "— Reset: rebuilding grid");
+  buildGrid();
+};
+
+window.triggerAll = function() {
+  document.querySelectorAll(".card__img").forEach(img => {
+    img.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  addLog("visible", "⚡ Scrolling all images into view...");
+};
+
+window.clearLog = function() {
+  const log = document.getElementById("log");
+  log.innerHTML = '<div class="log__entry"><span class="log__time">--:--:--</span><span class="log__msg--visible">Log cleared.</span></div>';
+};
+
+// Init
+buildGrid();
+</script>
+
+</body>
+</html>
