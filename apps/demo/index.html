@@ -453,6 +453,94 @@ function hasIntersectionObserver() {
   return isBrowser() && "IntersectionObserver" in window;
 }
 
+// ── Observability helpers (mirrors packages/core/src/observability/) ─────────
+
+function captureConnection() {
+  const conn = navigator?.connection ?? navigator?.mozConnection ?? navigator?.webkitConnection;
+  return {
+    effectiveType: conn?.effectiveType,
+    downlink:      conn?.downlink,
+    rtt:           conn?.rtt,
+    saveData:      conn?.saveData,
+  };
+}
+
+function createTiming() {
+  return {
+    observedAt:    performance.now(),
+    visibleAt:     null,
+    loadedAt:      null,
+    timeToLoad:    null,
+    timeToVisible: null,
+  };
+}
+
+function markVisible(timing) {
+  timing.visibleAt     = performance.now();
+  timing.timeToVisible = Math.round(timing.visibleAt - timing.observedAt);
+}
+
+function markLoaded(timing) {
+  timing.loadedAt   = performance.now();
+  timing.timeToLoad = timing.visibleAt !== null
+    ? Math.round(timing.loadedAt - timing.visibleAt)
+    : null;
+}
+
+function buildAnalyticsEvent(eventName, entry, errorMessage) {
+  const ev = {
+    event:      eventName,
+    src:        entry.options.src,
+    state:      entry.state,
+    attempts:   entry.attempts,
+    timing:     { ...entry.timing },
+    connection: { ...entry.connection },
+    dimensions: entry.dimensions ? { ...entry.dimensions } : null,
+    timestamp:  new Date().toISOString(),
+  };
+  if (errorMessage !== undefined) ev.errorMessage = errorMessage;
+  return ev;
+}
+
+// Mirrors packages/core/src/observability/handlers.ts → consoleHandler
+const consoleHandler = {
+  track(event) {
+    const styles = {
+      image_visible: "color:#a78bfa;font-weight:bold",
+      image_loaded:  "color:#22c55e;font-weight:bold",
+      image_error:   "color:#ef4444;font-weight:bold",
+    };
+
+    const filename = event.src.split("/").pop()?.split("?")[0] ?? event.src;
+    const conn     = event.connection.effectiveType ?? "unknown";
+
+    let summary;
+    if (event.event === "image_loaded") {
+      const dims = event.dimensions ? ` (${event.dimensions.width}×${event.dimensions.height})` : "";
+      summary = `${filename} — ${event.timing.timeToLoad}ms on ${conn}${dims}`;
+    } else if (event.event === "image_error") {
+      summary = `${filename} — ${event.errorMessage} after ${event.attempts} attempt(s) on ${conn}`;
+    } else {
+      const scrollDepth = event.timing.timeToVisible !== null
+        ? ` (scroll depth: ${event.timing.timeToVisible}ms)`
+        : "";
+      summary = `${filename} — entered viewport${scrollDepth}`;
+    }
+
+    console.groupCollapsed(
+      `%c[lazysnap] ${event.event.padEnd(15)}%c ${summary}`,
+      styles[event.event],
+      "color:inherit"
+    );
+    console.log("timing",     event.timing);
+    console.log("connection", event.connection);
+    if (event.dimensions) console.log("dimensions", event.dimensions);
+    if (event.errorMessage) console.log("error", event.errorMessage);
+    console.log("full event", event);
+    console.groupEnd();
+  },
+};
+
 const GLOBAL_DEFAULTS = {
   rootMargin: "0px 0px 200px 0px",
   threshold: 0,
@@ -534,6 +622,8 @@ function loadImage(entry) {
   if (opts.srcset) img.srcset = opts.srcset;
   if (opts.sizes) img.sizes = opts.sizes;
   img.onload = () => {
+    markLoaded(entry.timing);
+    entry.dimensions = { width: img.naturalWidth, height: img.naturalHeight };
     if (opts.srcset) el.srcset = opts.srcset;
     if (opts.sizes) el.sizes = opts.sizes;
     el.src = opts.src;
@@ -556,10 +646,19 @@ function loadImage(entry) {
 
 function observe(element, options) {
   const opts = resolveOptions(options);
-  const entry = { element, options: opts, state: "idle", attempts: 0 };
+  const entry = {
+    element,
+    options:    opts,
+    state:      "idle",
+    attempts:   0,
+    timing:     createTiming(),
+    connection: captureConnection(),
+    dimensions: null,
+  };
   if (!isBrowser()) return () => {};
   applyPlaceholder(element, opts);
   if (!hasIntersectionObserver()) {
+    markVisible(entry.timing);
     opts.onVisible(entry);
     loadImage(entry);
     return () => {};
@@ -567,6 +666,7 @@ function observe(element, options) {
   const unobserve = observeElement(element, opts.rootMargin, opts.threshold, (ie) => {
     if (!ie.isIntersecting) return;
     unobserve();
+    markVisible(entry.timing);
     opts.onVisible(entry);
     loadImage(entry);
   });
@@ -658,21 +758,24 @@ function buildGrid() {
       placeholder: lqip,
       transitionDuration: 450,
       rootMargin: "0px 0px 100px 0px",
-      onVisible: () => {
+      onVisible: (entry) => {
+        consoleHandler.track(buildAnalyticsEvent("image_visible", entry));
         setBadge("loading");
         stateCounts.idle = Math.max(0, stateCounts.idle - 1);
         stateCounts.loading++;
         updateStats();
         addLog("visible", `↓ Loading: ${title}`);
       },
-      onLoad: () => {
+      onLoad: (entry) => {
+        consoleHandler.track(buildAnalyticsEvent("image_loaded", entry));
         setBadge("loaded");
         stateCounts.loading = Math.max(0, stateCounts.loading - 1);
         stateCounts.loaded++;
         updateStats();
         addLog("load", `✓ Loaded: ${title}`);
       },
-      onError: (_, err) => {
+      onError: (entry, err) => {
+        consoleHandler.track(buildAnalyticsEvent("image_error", entry, err.message));
         setBadge("error");
         stateCounts.loading = Math.max(0, stateCounts.loading - 1);
         stateCounts.error++;
