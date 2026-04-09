@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build @lazysnap/core
+        run: pnpm --filter @lazysnap/core build
+
       - name: Typecheck all packages
         run: pnpm typecheck
 
