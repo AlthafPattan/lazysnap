@@ -59,7 +59,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests with coverage
-        run: pnpm test --coverage
+        run: pnpm --filter @lazysnap/core test -- --coverage
 
       - name: Upload coverage to Codecov
         if: matrix.node == 20
